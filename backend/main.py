@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import scraper
 import ai_engine
 import schemas
+import scope_engine
+from taxonomy import ALL_SCOPE_TILES
 
 app = FastAPI(
     title="Lead-Scope AI API",
@@ -40,13 +42,18 @@ def health_check():
 
 
 @app.get("/api/v1/assessment/{company_identifier}", response_model=schemas.AssessmentResponse)
-async def get_assessment_data(company_identifier: str):
+def get_assessment_data(company_identifier: str):
     """
-    Takes a company identifier (ticker), scrapes context, runs AI analysis,
+    Takes a company identifier (ticker), fetches news via API, runs AI analysis,
     and returns a structured assessment.
     """
-    context = await scraper.get_company_context(company_identifier)
-    if "Failed to fetch" in context or "No news" in context:
+    try:
+        context = scraper.get_company_context(company_identifier)
+    except Exception as e:
+        # If the scraper (API call) fails, return a 500 Internal Server Error
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve company data: {e}")
+
+    if "No news" in context:
         raise HTTPException(status_code=404, detail=context)
 
     raw_cards = ai_engine.generate_pain_cards(context, company_identifier)
@@ -55,4 +62,13 @@ async def get_assessment_data(company_identifier: str):
 
     validated_cards = [schemas.PainCard(**card) for card in raw_cards]
 
-    return schemas.AssessmentResponse(pain_cards=validated_cards)
+    activated_tiles = scope_engine.determine_scope(validated_cards)
+
+    scope_summary = f"Phase 1 Scope includes {len(activated_tiles)} key modules focusing on core finance and logistics."
+
+    return schemas.AssessmentResponse(
+        pain_cards=validated_cards,
+        scope_summary=scope_summary,
+        activated_tiles=activated_tiles,
+        all_tiles=ALL_SCOPE_TILES
+    )
