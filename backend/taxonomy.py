@@ -1,40 +1,54 @@
-# A dictionary of all possible tiles we can show on the grid
-# In a real project, this would be much larger.
-ALL_SCOPE_TILES = {
-    'FI-GL': 'General Ledger',
-    'FI-AP': 'Accounts Payable',
-    'FI-AR': 'Accounts Receivable',
-    'CO-PA': 'Profitability Analysis',
-    'EC-CS': 'Consolidation',
-    'MM-PUR': 'Procurement',
-    'MM-IM': 'Inventory Management',
-    'SD-SLS': 'Sales & Distribution',
-    'PP-MRP': 'Production Planning',
-    'MDG': 'Master Data Governance',
-    'HCM-PY': 'Payroll',
-    'PM-WOC': 'Maintenance Orders'
+
+# This first set of rules maps broader themes, usually found in the pain card titles,
+# to relevant scope areas. This helps catch more nuanced pain points.
+PAIN_THEME_RULES = {
+    'competition': ['FIN-CTRL'],  # Intense competition requires cost control & margin analysis
+    'market volatility': ['FIN-FPA'],  # Volatility affects forecasting
+    'cost management': ['FIN-CTRL'],
+    'revenue recognition': ['COM-RAR'],
+    'cash flow': ['FIN-TCM'],
+    'churn': ['COM-OM'], # Customer churn linked to Order Management
+    'forecasting': ['FIN-FPA', 'SCM-DPF'],
 }
 
-# The rule engine's logic. Maps a keyword to a list of module IDs.
-# The keywords will be searched for in the pain card text.
-SCOPE_RULES = {
+# This second set of rules provides more granular, specific keyword matches.
+# It's good for finding direct references in the pain card blurbs.
+KEYWORD_RULES = {
     # Financial Keywords
-    'financial': ['FI-GL', 'FI-AP', 'FI-AR'],
-    'close': ['FI-GL', 'EC-CS'],
-    'closing': ['FI-GL', 'EC-CS'],
-    'ledger': ['FI-GL'],
-    'margin': ['CO-PA'],
-    'profitability': ['CO-PA'],
+    'financial data': ['FIN-MDM'],
+    'financial reporting': ['FIN-CTRL', 'FIN-FPA'],
+    'financial close': ['FIN-CTRL'],
+    'closing process': ['FIN-CTRL'],
+    'margin': ['FIN-CTRL'],
+    'profitability': ['FIN-CTRL'],
+    'procure-to-pay': ['FIN-P2P'],
+    'cash management': ['FIN-TCM'],
+    'treasury': ['FIN-TCM'],
+    'invoice': ['COM-INV'],
+    'revenue': ['COM-RAR'],
 
-    # Logistical Keywords
-    'supply chain': ['MM-PUR', 'SD-SLS', 'PP-MRP'],
-    'inventory': ['MM-IM'],
-    'procurement': ['MM-PUR'],
-    'sourcing': ['MM-PUR'],
-    'sales': ['SD-SLS'],
-    'shipping': ['SD-SLS'],
+    # Supply Chain & Operations Keywords
+    'supply chain': ['SCM-DPF', 'SCM-IM', 'SCM-WMS', 'SCM-TRA'],
+    'inventory': ['SCM-IM'],
+    'procurement': ['FIN-P2P', 'SCM-DPF'],
+    'logistics': ['SCM-TRA', 'SCM-WMS'],
+    'transportation': ['SCM-TRA'],
+    'warehouse': ['SCM-WMS'],
+    'distribution': ['SCM-WMS'],
+    'planning': ['OPS-PP', 'SCM-DPF'],
+    'manufacturing': ['OPS-EXEC'],
+    'production': ['OPS-PP', 'OPS-EXEC'],
+    'quality': ['OPS-QM'],
+    'asset maintenance': ['OPS-PM'],
 
+    # Customer & Sales Keywords
+    'customer': ['COM-OM'],
+    'order fulfillment': ['COM-OM'],
+    'available-to-promise': ['COM-ATP'],
+    'reporting compliance': ['COM-RAR', 'FIN-CTRL'],
+    
     # Data Keywords
-    'data': ['MDG'],
-    'inconsistent': ['MDG'],
+    'master data': ['FIN-MDM'],
+    'inconsistent data': ['FIN-MDM'],
+    'fragmented data': ['FIN-MDM'],
 }

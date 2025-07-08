@@ -1,22 +1,35 @@
-from taxonomy import SCOPE_RULES
-from schemas import PainCard
+# backend/scope_engine.py - V2
+from taxonomy import PAIN_THEME_RULES, KEYWORD_RULES # Import both rule sets
 
-def determine_scope(pain_cards: list[PainCard]) -> list[str]:
-    """
-    Processes a list of pain cards against the SCOPE_RULES
-    to determine which tiles should be activated.
-    """
-    activated_tiles = set() # Use a set to automatically handle duplicates
+def process_scope_and_cards(raw_cards: list[dict]) -> tuple[list[dict], list[str]]:
+    enriched_cards = []
+    all_activated_tiles = set()
 
-    for card in pain_cards:
-        # Combine title and blurb into a single searchable text, in lowercase
-        card_text = f"{card.title} {card.blurb}".lower()
+    for card_data in raw_cards:
+        title_text = card_data.get('title', '').lower()
+        blurb_text = card_data.get('blurb', '').lower()
 
-        # Check each rule
-        for keyword, modules in SCOPE_RULES.items():
-            if keyword in card_text:
-                # If a keyword is found, add all its associated modules to the set
+        card_triggered_tiles = set()
+        card_triggering_keywords = set()
+
+        # First, check for thematic keywords in the title
+        for theme, modules in PAIN_THEME_RULES.items():
+            if theme in title_text:
+                card_triggering_keywords.add(theme)
                 for module in modules:
-                    activated_tiles.add(module)
+                    card_triggered_tiles.add(module)
 
-    return sorted(list(activated_tiles)) # Return a sorted list
+        # Second, check for granular keywords in the full text
+        for keyword, modules in KEYWORD_RULES.items():
+            if keyword in f"{title_text} {blurb_text}":
+                card_triggering_keywords.add(keyword)
+                for module in modules:
+                    card_triggered_tiles.add(module)
+
+        card_data['triggered_tiles'] = sorted(list(card_triggered_tiles))
+        card_data['triggering_keywords'] = sorted(list(card_triggering_keywords))
+        enriched_cards.append(card_data)
+
+        all_activated_tiles.update(card_triggered_tiles)
+
+    return enriched_cards, sorted(list(all_activated_tiles))

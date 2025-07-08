@@ -1,14 +1,15 @@
 # backend/main.py
 
 from fastapi import FastAPI, HTTPException
-# IMPORT THE CORS MIDDLEWARE
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Tuple
 
+# Import all our custom modules
 import scraper
 import ai_engine
 import schemas
 import scope_engine
-from taxonomy import ALL_SCOPE_TILES
+import classifier 
 
 app = FastAPI(
     title="Lead-Scope AI API",
@@ -16,25 +17,21 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# DEFINE THE ALLOWED ORIGINS (your frontend's address)
+# CORS Middleware (no changes needed)
 origins = [
     "http://localhost:3000",
 ]
-
-# ADD THE CORS MIDDLEWARE CONFIGURATION
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"], # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Lead-Scope AI Backend!"}
-
 
 @app.get("/health")
 def health_check():
@@ -43,32 +40,41 @@ def health_check():
 
 @app.get("/api/v1/assessment/{company_identifier}", response_model=schemas.AssessmentResponse)
 def get_assessment_data(company_identifier: str):
-    """
-    Takes a company identifier (ticker), fetches news via API, runs AI analysis,
-    and returns a structured assessment.
-    """
+    # Step 1: Get data from our data fetching module
     try:
-        context = scraper.get_company_context(company_identifier)
+        # The function now returns both the context for the AI and the full profile for classification
+        context, company_profile = scraper.get_company_context(company_identifier)
     except Exception as e:
-        # If the scraper (API call) fails, return a 500 Internal Server Error
         raise HTTPException(status_code=500, detail=f"Failed to retrieve company data: {e}")
 
-    if "No news" in context:
-        raise HTTPException(status_code=404, detail=context)
+    # Handle cases where the ticker might be invalid
+    if not company_profile:
+         raise HTTPException(status_code=404, detail=f"Could not find company profile for ticker: {company_identifier}")
 
+    # Step 2: Generate pain cards using the context
     raw_cards = ai_engine.generate_pain_cards(context, company_identifier)
     if not raw_cards:
         raise HTTPException(status_code=500, detail="AI engine failed to generate pain cards.")
+    
+    # Step 3: Run the scope engine to determine tiles and enrich cards
+    enriched_cards_data, activated_tiles = scope_engine.process_scope_and_cards(raw_cards)
+    validated_cards = [schemas.PainCard(**card) for card in enriched_cards_data]
+    scope_summary = f"Phase 1 Scope includes {len(activated_tiles)} key modules..."
 
-    validated_cards = [schemas.PainCard(**card) for card in raw_cards]
+    # Step 4: NEW - Run the classifier on the company profile
+    classified_industry, geo_scope = classifier.classify_company(company_profile)
 
-    activated_tiles = scope_engine.determine_scope(validated_cards)
-
-    scope_summary = f"Phase 1 Scope includes {len(activated_tiles)} key modules focusing on core finance and logistics."
-
+    # Step 5: Assemble the complete response payload
     return schemas.AssessmentResponse(
         pain_cards=validated_cards,
         scope_summary=scope_summary,
         activated_tiles=activated_tiles,
-        all_tiles=ALL_SCOPE_TILES
+        
+        # Add the raw data from the profile
+        industry=company_profile.get("industry"),
+        revenue=company_profile.get("revenue"),
+        
+        # Add the newly classified data
+        classified_industry=classified_industry,
+        geo_scope=geo_scope
     )
