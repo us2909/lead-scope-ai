@@ -23,7 +23,7 @@ def generate_pain_cards(context: str, company_name: str) -> list[dict]:
     # --- UPGRADED PROMPT ---
     prompt = f"""
     You are a Tier-1 management consultant from a top firm, advising the CFO of {company_name}.
-    Based on the following context from their company profile and 10-K filing, identify 6 to 8 significant, CFO-level business and financial pain points.
+    Based on the following context from their company profile and 10-K filing, exactly 8 significant, CFO-level business and financial pain points.
 
     Guidelines:
     1.  Focus on challenges related to profitability, cash flow, operational efficiency, market pressures, or financial systems.

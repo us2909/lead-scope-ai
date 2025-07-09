@@ -72,23 +72,37 @@ def _get_10k_risk_factors(ticker: str, api_key: str) -> str:
 def get_company_context(identifier: str) -> Tuple[str, Dict[str, Any]]:
     """
     Main function called by main.py.
-    Orchestrates getting both the company profile and the 10-K risk factors.
+    Orchestrates getting the company profile, latest annual revenue, and the 10-K risk factors.
     """
     api_key = os.getenv("FMP_API_KEY")
     if not api_key:
         raise ValueError("FMP API key not found.")
 
-    # Step 1: Get the structured profile data (for the dashboard)
+    # Step 1: Get the structured profile data
     company_profile = _get_company_profile(identifier, api_key)
     
-    # Step 2: Get the rich text from the 10-K (for the AI)
+    # --- LOGIC TO FETCH LATEST ANNUAL REVENUE ---
+    print("Fetching latest annual revenue...")
+    try:
+        # This URL now specifies period=annual to get the latest full-year data
+        income_url = f"https://financialmodelingprep.com/api/v3/income-statement/{identifier}?period=annual&limit=1&apikey={api_key}"
+        income_response = requests.get(income_url).json()
+        if income_response:
+            latest_revenue = income_response[0].get('revenue')
+            if latest_revenue:
+                print(f"Updating revenue to latest annual figure: {latest_revenue}")
+                company_profile['revenue'] = latest_revenue
+    except Exception as e:
+        print(f"Could not fetch annual revenue: {e}")
+    # --- END OF REVENUE LOGIC ---
+
+    # Step 2: Get the rich text from the 10-K for the AI
     risk_factors_text = _get_10k_risk_factors(identifier, api_key)
     
     # Step 3: Use the 10-K text as our primary context. If it's empty, fall back to the profile description.
     final_context = risk_factors_text if risk_factors_text else company_profile.get("description", "")
     
-    if not final_context:
-        # If both are empty, we can't proceed.
+    if not final_context and not company_profile:
         return "Could not retrieve any context for AI.", {}
 
     # Limit the context to ~3000 words to not overwhelm the AI model
