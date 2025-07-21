@@ -107,13 +107,13 @@ To run this project on your local machine, you will need two separate terminals.
 
 ```mermaid
 graph TD
-    A[User @ Next.js Frontend] -- "1. Enters Ticker 'AAPL'" --> B(FastAPI Backend);
-    B -- "2. Get 10-K Link" --> C[FMP API];
-    C -- "3. Filing URL" --> B;
-    B -- "4. Scrape 'Risk Factors'" --> D[SEC EDGAR Database];
-    D -- "5. Raw Text Context" --> B;
-    B -- "6. Send Context to AI" --> E[Google Gemini API];
-    E -- "7. Generate Pain Cards (JSON)" --> B;
-    B -- "8. Run Classifier & Scope Engine" --> B;
-    B -- "9. Return Full Assessment (JSON)" --> A;
-    A -- "10. Render Interactive Wizard" --> A;
+    A[User @ Next.js Frontend] -- Enters Ticker --> B(FastAPI Backend);
+    B -- Gets 10-K Link --> C[FMP API];
+    C -- Returns Filing URL --> B;
+    B -- Scrapes 'Risk Factors' --> D[SEC EDGAR Database];
+    D -- Returns Raw Text --> B;
+    B -- Sends Context to AI --> E[Google Gemini API];
+    E -- Generates Pain Cards --> B;
+    B -- Runs Classifier & Scope Engine --> B;
+    B -- Returns Full Assessment --> A;
+    A -- Renders Interactive Wizard --> A;
