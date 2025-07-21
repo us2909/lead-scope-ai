@@ -5,11 +5,11 @@ Lead-Scope AI is a full-stack, Generative AI-powered web application designed to
 2. The Business Problem
 In the competitive consulting landscape, the initial client engagement is critical. However, the preparation process is often inefficient and inconsistent:
 
-Time-Consuming: Consultants spend several hours manually reading dense SEC 10-K filings and financial news to understand a potential client's challenges.
+- Time-Consuming: Consultants spend several hours manually reading dense SEC 10-K filings and financial news to understand a potential client's challenges.
 
-Inconsistent Quality: The depth of insight varies significantly based on the consultant's experience and the time available for research.
+- Inconsistent Quality: The depth of insight varies significantly based on the consultant's experience and the time available for research.
 
-Reactive Engagement: This manual-first approach delays the ability to provide immediate, tangible value, forcing consultants to spend initial meetings on discovery rather than strategy.
+- Reactive Engagement: This manual-first approach delays the ability to provide immediate, tangible value, forcing consultants to spend initial meetings on discovery rather than strategy.
 
 The core challenge was to automate this intelligence-gathering process, freeing up consultants to focus on high-value strategic activities.
 
