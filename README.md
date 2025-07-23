@@ -117,3 +117,11 @@ graph TD
     B -- Runs Classifier & Scope Engine --> B;
     B -- Returns Full Assessment --> A;
     A -- Renders Interactive Wizard --> A;
+
+## Running Tests
+
+Execute the backend unit tests with `pytest`:
+
+```bash
+PYTHONPATH=. pytest
+```
