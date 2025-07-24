@@ -1,80 +1,83 @@
-# backend/main.py
+# backend/main.py - FINAL CORRECTED VERSION
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Tuple
+from tenacity import retry, stop_after_attempt, wait_exponential
 
-# Import all our custom modules
+# Import custom modules and error types
+from exceptions import (
+    ValidationError,
+    ExternalAPIError,
+    DataParsingError,
+    AIGenerationError,
+)
+from logger import logger
+from config import settings
 import scraper
 import ai_engine
-import schemas
 import scope_engine
-import classifier 
+import classifier
+from schemas import AssessmentResponse, PainCard # <-- Ensure PainCard is also imported
+from validators import validate_ticker
 
 app = FastAPI(
-    title="Lead-Scope AI API",
+    title=settings.project_name,
+    version=settings.project_version,
     description="API for generating CFO-level pain points from company data.",
-    version="0.1.0"
 )
 
-# CORS Middleware (no changes needed)
-origins = [
-    "http://localhost:3000",
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Lead-Scope AI Backend!"}
-
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    logger.info("Health check endpoint accessed")
+    return {"status": "ok", "timestamp": settings.start_time}
 
 
-@app.get("/api/v1/assessment/{company_identifier}", response_model=schemas.AssessmentResponse)
-def get_assessment_data(company_identifier: str):
-    # Step 1: Get data from our data fetching module
+@app.get("/api/v1/assessment/{ticker}", response_model=AssessmentResponse)
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def get_assessment_data(ticker: str):
+    logger.info(f"Assessment request started for: {ticker}")
     try:
-        # The function now returns both the context for the AI and the full profile for classification
-        context, company_profile = scraper.get_company_context(company_identifier)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve company data: {e}")
+        validated_ticker = validate_ticker(ticker)
+        logger.info(f"Validated ticker: {validated_ticker}")
 
-    # Handle cases where the ticker might be invalid
-    if not company_profile:
-         raise HTTPException(status_code=404, detail=f"Could not find company profile for ticker: {company_identifier}")
+        context, company_profile = scraper.get_company_context(validated_ticker)
+        logger.info(f"Successfully retrieved company context for {validated_ticker}")
 
-    # Step 2: Generate pain cards using the context
-    raw_cards = ai_engine.generate_pain_cards(context, company_identifier)
-    if not raw_cards:
+        raw_cards = ai_engine.generate_pain_cards(context, validated_ticker)
+        
+        enriched_cards_data, activated_tiles = scope_engine.process_scope_and_cards(raw_cards)
+        
+        # This line now works because 'PainCard' is imported
+        validated_cards = [PainCard(**card) for card in enriched_cards_data]
+        
+        classified_industry, geo_scope = classifier.classify_company(company_profile)
+
+        return AssessmentResponse(
+            pain_cards=validated_cards,
+            scope_summary=f"Phase 1 Scope includes {len(activated_tiles)} key modules...",
+            activated_tiles=activated_tiles,
+            industry=company_profile.get("industry"),
+            revenue=company_profile.get("revenue"),
+            classified_industry=classified_industry,
+            geo_scope=geo_scope,
+        )
+    except ValidationError as e:
+        logger.warning(f"Validation error for ticker {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ExternalAPIError, DataParsingError) as e:
+        logger.error(f"Unexpected error retrieving company data for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve or parse company data.")
+    except AIGenerationError as e:
+        logger.error(f"AI generation failed for {ticker}: {e}")
         raise HTTPException(status_code=500, detail="AI engine failed to generate pain cards.")
-    
-    # Step 3: Run the scope engine to determine tiles and enrich cards
-    enriched_cards_data, activated_tiles = scope_engine.process_scope_and_cards(raw_cards)
-    validated_cards = [schemas.PainCard(**card) for card in enriched_cards_data]
-    scope_summary = f"Phase 1 Scope includes {len(activated_tiles)} key modules..."
-
-    # Step 4: NEW - Run the classifier on the company profile
-    classified_industry, geo_scope = classifier.classify_company(company_profile)
-
-    # Step 5: Assemble the complete response payload
-    return schemas.AssessmentResponse(
-        pain_cards=validated_cards,
-        scope_summary=scope_summary,
-        activated_tiles=activated_tiles,
-        
-        # Add the raw data from the profile
-        industry=company_profile.get("industry"),
-        revenue=company_profile.get("revenue"),
-        
-        # Add the newly classified data
-        classified_industry=classified_industry,
-        geo_scope=geo_scope
-    )
+    except Exception as e:
+        logger.critical(f"An unhandled exception occurred for ticker {ticker}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected internal server error occurred.")

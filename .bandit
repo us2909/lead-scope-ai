@@ -1,0 +1,12 @@
+[bandit]
+exclude_dirs = [
+    "backend/venv",
+    "backend/.venv",
+    "backend/test_*.py"
+]
+
+[bandit.skip]
+skips = [
+    "B101",  # Skip assert_used test
+    "B601"   # Skip paramiko calls (if using SSH)
+]

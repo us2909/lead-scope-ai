@@ -1,4 +1,4 @@
-// frontend/app/components/DashboardView.tsx
+// frontend/app/components/FinalDashboard.tsx
 'use client';
 
 // Import the data types we need from our central types file
@@ -6,8 +6,7 @@ import { AssessmentData } from '@/types';
 // Import the ScopeGrid component from its own file
 import { ScopeGrid } from './ScopeGrid';
 
-// A small component for a single input field on the dashboard
-function InfoField({ label, value }: { label: string, value: string | number | null | undefined }) {
+function InfoField({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div>
       <label className="text-sm text-gray-400">{label}</label>
@@ -18,7 +17,7 @@ function InfoField({ label, value }: { label: string, value: string | number | n
   );
 }
 
-// --- NEW: Define the Props type for our component ---
+// --- Define the Props type for our component ---
 interface DashboardViewProps {
     assessment: AssessmentData;
     activatedTiles: string[];
@@ -39,7 +38,7 @@ export function FinalDashboard({ assessment, activatedTiles, userAnswers }: Dash
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
       {/* Left Column: Financial Profile & Considerations */}
-      <div className="lg:col-span-1 bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-6 self-start">
+      <div className="lg-col-span-1 bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-6 self-start">
         <h3 className="text-xl font-bold text-white">The {assessment.company_name || '...'} Company</h3>
         <InfoField label="Industry" value={assessment.classified_industry} />
         
